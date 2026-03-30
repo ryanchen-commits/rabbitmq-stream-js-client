@@ -426,16 +426,20 @@ export class Connection {
           body.toJSON()
         )} length: ${body.byteLength}`
       )
-      this.socket.write(body, (err) => {
-        this.logger.debug(
-          `Write COMPLETED for cmd key: ${cmd.key.toString(16)} - correlationId: ${correlationId} err: ${err}`
-        )
-        if (err) {
-          return rej(err)
-        }
-        this?.heartbeat?.reportLastMessageSent()
-        res(this.waitResponse<T>({ correlationId, key: cmd.responseKey }))
-      })
+      if (this.socket.readyState === "open") {
+        this.socket.write(body, (err) => {
+          this.logger.debug(
+            `Write COMPLETED for cmd key: ${cmd.key.toString(16)} - correlationId: ${correlationId} err: ${err}`
+          )
+          if (err) {
+            return rej(err)
+          }
+          this?.heartbeat?.reportLastMessageSent()
+          res(this.waitResponse<T>({ correlationId, key: cmd.responseKey }))
+        })
+      } else {
+        rej(new Error(`Socket is not open (state: ${this.socket.readyState})`))
+      }
     })
   }
 
